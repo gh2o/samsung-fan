@@ -3,6 +3,9 @@
 *.mod.c
 .*.cmd
 
+.sw?
+.*.sw?
+
 /Module.symvers
 /modules.order
 /.tmp_versions
