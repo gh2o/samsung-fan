@@ -115,5 +115,8 @@ static void samsung_fan_exit(void) {
 }
 
 MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Gavin Li");
+MODULE_DESCRIPTION("WMI driver for controlling the fan on Samsung laptops.");
+MODULE_ALIAS("wmi:" WMI_GUID);
 module_init(samsung_fan_init);
 module_exit(samsung_fan_exit);
