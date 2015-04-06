@@ -4,6 +4,7 @@
 #include <linux/platform_device.h>
 
 #define DRIVER_NAME "samsung-fan"
+#define WMI_GUID "C16C47BA-50E3-444A-AF3A-B1C348380001"
 
 ssize_t samsung_fan_mode_show(struct device *dev, struct device_attribute *attr,
 		char *buf) {
@@ -38,6 +39,10 @@ static struct platform_driver samsung_fan_driver = {
 
 static int samsung_fan_init(void) {
 	int ret;
+	// check whether method is present
+	if (!wmi_has_guid(WMI_GUID))
+		return -ENODEV;
+	// we're good to go
 	ret = platform_driver_register(&samsung_fan_driver);
 	if (ret) {
 		goto err0;
