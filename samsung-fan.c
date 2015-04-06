@@ -6,6 +6,20 @@
 #define DRIVER_NAME "samsung-fan"
 #define WMI_GUID "C16C47BA-50E3-444A-AF3A-B1C348380001"
 
+struct samsung_fan_packet {
+	uint16_t magic;
+	uint16_t opcode;
+	uint32_t value;
+	uint8_t padding[24];
+};
+
+static inline bool string_matches(const char *str, const char *kwd) {
+	size_t len = strlen(kwd);
+	if (strncmp(str, kwd, len) != 0)
+		return false;
+	return str[len] == '\0' || str[len] == '\n';
+}
+
 ssize_t samsung_fan_mode_show(struct device *dev, struct device_attribute *attr,
 		char *buf) {
 	const char *info = "auto on off\n";
@@ -15,7 +29,27 @@ ssize_t samsung_fan_mode_show(struct device *dev, struct device_attribute *attr,
 
 ssize_t samsung_fan_mode_store(struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t count) {
-	return -ENODEV;
+	struct samsung_fan_packet pkt = {
+		.magic = 0x5843,
+		.opcode = 0x32,
+	};
+	struct acpi_buffer abuf = { sizeof(pkt), &pkt };
+	acpi_status st;
+	if (string_matches(buf, "auto"))
+		pkt.value = 0x81000100u;
+	else if (string_matches(buf, "on"))
+		pkt.value = 0;
+	else if (string_matches(buf, "off"))
+		pkt.value = 0x80000100u;
+	else
+		return -EINVAL;
+	st = wmi_evaluate_method(WMI_GUID, 1, 0, &abuf, &abuf);
+	if (ACPI_SUCCESS(st)) {
+		return count;
+	} else {
+		dev_err(dev, "Failed to control fan: %s\n", acpi_format_exception(st));
+		return -EIO;
+	}
 }
 
 static int samsung_fan_probe(struct platform_device *pdev) {
