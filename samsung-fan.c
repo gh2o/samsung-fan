@@ -33,7 +33,15 @@ ssize_t samsung_fan_mode_store(struct device *dev, struct device_attribute *attr
 		.magic = 0x5843,
 		.opcode = 0x32,
 	};
-	struct acpi_buffer abuf = { sizeof(pkt), &pkt };
+	union acpi_object aobj = {
+		.buffer = {
+			.type = ACPI_TYPE_BUFFER,
+			.length = sizeof(pkt),
+			.pointer = (u8 *)&pkt
+		}
+	};
+	struct acpi_buffer abuf = { sizeof(aobj), &aobj };
+	struct acpi_buffer obuf = { ACPI_ALLOCATE_BUFFER, NULL };
 	acpi_status st;
 	if (string_matches(buf, "auto"))
 		pkt.value = 0x81000100u;
@@ -43,7 +51,8 @@ ssize_t samsung_fan_mode_store(struct device *dev, struct device_attribute *attr
 		pkt.value = 0x80000100u;
 	else
 		return -EINVAL;
-	st = wmi_evaluate_method(WMI_GUID, 1, 0, &abuf, &abuf);
+	st = wmi_evaluate_method(WMI_GUID, 1, 0, &abuf, &obuf);
+	kfree(obuf.pointer);
 	if (ACPI_SUCCESS(st)) {
 		return count;
 	} else {
