@@ -1,28 +1,77 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/acpi.h>
+#include <linux/platform_device.h>
+
+#define DRIVER_NAME "samsung-fan"
+
+ssize_t samsung_fan_mode_show(struct device *dev, struct device_attribute *attr,
+		char *buf) {
+	return -ENODEV;
+}
+
+ssize_t samsung_fan_mode_store(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count) {
+	return -ENODEV;
+}
+
+static int samsung_fan_probe(struct platform_device *pdev) {
+	return -ENODEV;
+}
+
+static int samsung_fan_remove(struct platform_device *pdev) {
+	return -ENODEV;
+}
+
+static DEVICE_ATTR(mode, S_IRUGO | S_IWUSR, samsung_fan_mode_show, samsung_fan_mode_store);
+
+static struct platform_device *samsung_fan_device;
+
+static struct platform_driver samsung_fan_driver = {
+	.driver = {
+		.name = DRIVER_NAME,
+		.owner = THIS_MODULE,
+	},
+	.probe = samsung_fan_probe,
+	.remove = samsung_fan_remove
+};
 
 static int samsung_fan_init(void) {
-	char inbuf[32] = {0};
-	char outbuf[256] = {0};
-	struct acpi_buffer ainbuf = { sizeof(inbuf), inbuf };
-	struct acpi_buffer aoutbuf = { sizeof(outbuf), outbuf };
-	acpi_status st;
-
-	inbuf[0] = 0x43;
-	inbuf[1] = 0x58;
-	inbuf[2] = 0x32;
-	inbuf[5] = 0x01;
-	inbuf[7] = 0x80;
-	st = wmi_evaluate_method("C16C47BA-50E3-444A-AF3A-B1C348380001",
-			1, 0, &ainbuf, &aoutbuf);
-
-	printk("wmimf: status is %u\n", st);
-	print_hex_dump(KERN_INFO, "wmisf", DUMP_PREFIX_OFFSET, 16, 1, outbuf, sizeof(outbuf), 1);
+	int ret;
+	ret = platform_driver_register(&samsung_fan_driver);
+	if (ret) {
+		goto err0;
+	}
+	samsung_fan_device = platform_device_alloc(DRIVER_NAME, -1);
+	if (!samsung_fan_device) {
+		ret = -ENOMEM;
+		goto err1;
+	}
+	ret = platform_device_add(samsung_fan_device);
+	if (ret) {
+		goto err2;
+	}
+	ret = device_create_file(&samsung_fan_device->dev, &dev_attr_mode);
+	if (ret) {
+		goto err3;
+	}
 	return 0;
+//err4:
+	device_remove_file(&samsung_fan_device->dev, &dev_attr_mode);
+err3:
+	platform_device_del(samsung_fan_device);
+err2:
+	platform_device_put(samsung_fan_device);
+err1:
+	platform_driver_unregister(&samsung_fan_driver);
+err0:
+	return ret;
 }
 
 static void samsung_fan_exit(void) {
+	device_remove_file(&samsung_fan_device->dev, &dev_attr_mode);
+	platform_device_unregister(samsung_fan_device);
+	platform_driver_unregister(&samsung_fan_driver);
 }
 
 MODULE_LICENSE("GPL");
