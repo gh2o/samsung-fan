@@ -52,14 +52,6 @@ ssize_t samsung_fan_mode_store(struct device *dev, struct device_attribute *attr
 	}
 }
 
-static int samsung_fan_probe(struct platform_device *pdev) {
-	return -ENODEV;
-}
-
-static int samsung_fan_remove(struct platform_device *pdev) {
-	return -ENODEV;
-}
-
 static DEVICE_ATTR(mode, S_IRUGO | S_IWUSR, samsung_fan_mode_show, samsung_fan_mode_store);
 
 static struct platform_device *samsung_fan_device;
@@ -69,8 +61,6 @@ static struct platform_driver samsung_fan_driver = {
 		.name = DRIVER_NAME,
 		.owner = THIS_MODULE,
 	},
-	.probe = samsung_fan_probe,
-	.remove = samsung_fan_remove
 };
 
 static int samsung_fan_init(void) {
