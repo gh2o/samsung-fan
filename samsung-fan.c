@@ -8,7 +8,9 @@
 
 ssize_t samsung_fan_mode_show(struct device *dev, struct device_attribute *attr,
 		char *buf) {
-	return -ENODEV;
+	const char *info = "auto on off\n";
+	strcpy(buf, info);
+	return strlen(info);
 }
 
 ssize_t samsung_fan_mode_store(struct device *dev, struct device_attribute *attr,
