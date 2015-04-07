@@ -13,11 +13,59 @@ struct samsung_fan_packet {
 	uint8_t data[16];
 } __packed;
 
+static struct platform_device *samsung_fan_device;
+
+static struct platform_driver samsung_fan_driver = {
+	.driver = {
+		.name = DRIVER_NAME,
+		.owner = THIS_MODULE,
+	},
+};
+
 static inline bool string_matches(const char *str, const char *kwd) {
 	size_t len = strlen(kwd);
 	if (strncmp(str, kwd, len) != 0)
 		return false;
 	return str[len] == '\0' || str[len] == '\n';
+}
+
+acpi_status samsung_fan_wmi_call(uint16_t opcode, void *data, size_t len) {
+	struct samsung_fan_packet inpkt = {
+		.magic = 0x5843,
+		.opcode = opcode,
+	};
+	struct acpi_buffer inbuf = { sizeof(inpkt), &inpkt };
+	struct acpi_buffer outbuf = { ACPI_ALLOCATE_BUFFER, NULL };
+	union acpi_object *outobj;
+	struct samsung_fan_packet *outpkt;
+	acpi_status st;
+	/********/
+	if (len > 16) {
+		st = AE_BUFFER_OVERFLOW;
+		goto err0;
+	}
+	memcpy(inpkt.data, data, len);
+	st = wmi_evaluate_method(WMI_GUID, 1, 0, &inbuf, &outbuf);
+	if (ACPI_FAILURE(st)) {
+		dev_err(&samsung_fan_device->dev, "Samsung WMI opcode 0x%x failed: %s\n",
+				opcode, acpi_format_exception(st));
+		goto err0;
+	}
+	outobj = outbuf.pointer;
+	if (outobj->type != ACPI_TYPE_BUFFER) {
+		st = AE_TYPE;
+		goto err1;
+	}
+	if (outobj->buffer.length < sizeof(outpkt)) {
+		st = AE_BUFFER_OVERFLOW;
+		goto err1;
+	}
+	outpkt = (struct samsung_fan_packet *)outobj->buffer.pointer;
+	memcpy(data, outpkt->data, len);
+err1:
+	kfree(outobj);
+err0:
+	return st;
 }
 
 ssize_t samsung_fan_mode_show(struct device *dev, struct device_attribute *attr,
@@ -29,44 +77,23 @@ ssize_t samsung_fan_mode_show(struct device *dev, struct device_attribute *attr,
 
 ssize_t samsung_fan_mode_store(struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t count) {
-	struct samsung_fan_packet pkt = {
-		.magic = 0x5843,
-		.opcode = 0x32,
-	};
-	struct acpi_buffer abuf = { sizeof(pkt), &pkt };
-	struct acpi_buffer obuf = { ACPI_ALLOCATE_BUFFER, NULL };
-	acpi_status st;
-	if (string_matches(buf, "auto")) {
-		pkt.data[0] = 0x01;
-		pkt.data[2] = 0x81;
-	} else if (string_matches(buf, "on")) {
-		// no need to do anything
-	} else if (string_matches(buf, "off")) {
-		pkt.data[0] = 0x01;
-		pkt.data[2] = 0x80;
-	} else {
+	uint16_t opcode = 0x32;
+	uint32_t data;
+	if (string_matches(buf, "auto"))
+		data = 0x810001;
+	else if (string_matches(buf, "on"))
+		data = 0;
+	else if (string_matches(buf, "off"))
+		data = 0x800001;
+	else
 		return -EINVAL;
-	}
-	st = wmi_evaluate_method(WMI_GUID, 1, 0, &abuf, &obuf);
-	kfree(obuf.pointer);
-	if (ACPI_SUCCESS(st)) {
+	if (ACPI_SUCCESS(samsung_fan_wmi_call(opcode, &data, sizeof(data))))
 		return count;
-	} else {
-		dev_err(dev, "Failed to control fan: %s\n", acpi_format_exception(st));
+	else
 		return -EIO;
-	}
 }
 
 static DEVICE_ATTR(mode, S_IRUGO | S_IWUSR, samsung_fan_mode_show, samsung_fan_mode_store);
-
-static struct platform_device *samsung_fan_device;
-
-static struct platform_driver samsung_fan_driver = {
-	.driver = {
-		.name = DRIVER_NAME,
-		.owner = THIS_MODULE,
-	},
-};
 
 static int samsung_fan_init(void) {
 	int ret;
