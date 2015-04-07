@@ -87,7 +87,7 @@ err0:
 	return ret;
 }
 
-ssize_t samsung_wmi_mode_show(struct device *dev, struct device_attribute *attr,
+ssize_t samsung_wmi_fan_mode_show(struct device *dev, struct device_attribute *attr,
 		char *buf) {
 	uint32_t data = 0;
 	if (samsung_wmi_method_call_with_unlock(0x31, 0x31, &data, sizeof(data)))
@@ -99,7 +99,7 @@ ssize_t samsung_wmi_mode_show(struct device *dev, struct device_attribute *attr,
 	return strlen(buf);
 }
 
-ssize_t samsung_wmi_mode_store(struct device *dev, struct device_attribute *attr,
+ssize_t samsung_wmi_fan_mode_store(struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t count) {
 	uint32_t data;
 	if (string_matches(buf, "auto"))
@@ -116,7 +116,7 @@ ssize_t samsung_wmi_mode_store(struct device *dev, struct device_attribute *attr
 		return count;
 }
 
-static DEVICE_ATTR(mode, S_IRUGO | S_IWUSR, samsung_wmi_mode_show, samsung_wmi_mode_store);
+static DEVICE_ATTR(fan_mode, S_IRUGO | S_IWUSR, samsung_wmi_fan_mode_show, samsung_wmi_fan_mode_store);
 
 static int samsung_wmi_init(void) {
 	int ret;
@@ -137,13 +137,13 @@ static int samsung_wmi_init(void) {
 	if (ret) {
 		goto err2;
 	}
-	ret = device_create_file(&samsung_wmi_device->dev, &dev_attr_mode);
+	ret = device_create_file(&samsung_wmi_device->dev, &dev_attr_fan_mode);
 	if (ret) {
 		goto err3;
 	}
 	return 0;
 //err4:
-	device_remove_file(&samsung_wmi_device->dev, &dev_attr_mode);
+	device_remove_file(&samsung_wmi_device->dev, &dev_attr_fan_mode);
 err3:
 	platform_device_del(samsung_wmi_device);
 err2:
@@ -155,7 +155,7 @@ err0:
 }
 
 static void samsung_wmi_exit(void) {
-	device_remove_file(&samsung_wmi_device->dev, &dev_attr_mode);
+	device_remove_file(&samsung_wmi_device->dev, &dev_attr_fan_mode);
 	platform_device_unregister(samsung_wmi_device);
 	platform_driver_unregister(&samsung_wmi_driver);
 }
