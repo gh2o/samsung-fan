@@ -29,7 +29,7 @@ static inline bool string_matches(const char *str, const char *kwd) {
 	return str[len] == '\0' || str[len] == '\n';
 }
 
-acpi_status samsung_fan_wmi_call(uint16_t opcode, void *data, size_t len) {
+static int samsung_fan_wmi_call(uint16_t opcode, void *data, size_t len) {
 	struct samsung_fan_packet inpkt = {
 		.magic = 0x5843,
 		.opcode = opcode,
@@ -39,9 +39,10 @@ acpi_status samsung_fan_wmi_call(uint16_t opcode, void *data, size_t len) {
 	union acpi_object *outobj;
 	struct samsung_fan_packet *outpkt;
 	acpi_status st;
+	int ret = -EIO;
 	/********/
 	if (len > 16) {
-		st = AE_BUFFER_OVERFLOW;
+		ret = -EINVAL;
 		goto err0;
 	}
 	memcpy(inpkt.data, data, len);
@@ -53,26 +54,25 @@ acpi_status samsung_fan_wmi_call(uint16_t opcode, void *data, size_t len) {
 	}
 	outobj = outbuf.pointer;
 	if (outobj->type != ACPI_TYPE_BUFFER) {
-		st = AE_TYPE;
 		goto err1;
 	}
 	if (outobj->buffer.length < sizeof(outpkt)) {
-		st = AE_BUFFER_OVERFLOW;
 		goto err1;
 	}
 	outpkt = (struct samsung_fan_packet *)outobj->buffer.pointer;
 	memcpy(data, outpkt->data, len);
+	ret = 0;
 err1:
 	kfree(outobj);
 err0:
-	return st;
+	return ret;
 }
 
 ssize_t samsung_fan_mode_show(struct device *dev, struct device_attribute *attr,
 		char *buf) {
 	uint16_t opcode = 0x31;
 	uint32_t data = 0;
-	if (ACPI_FAILURE(samsung_fan_wmi_call(opcode, &data, sizeof(data))))
+	if (samsung_fan_wmi_call(opcode, &data, sizeof(data)))
 		return -EIO;
 	if (data)
 		strcpy(buf, "[auto off] on\n");
@@ -93,10 +93,10 @@ ssize_t samsung_fan_mode_store(struct device *dev, struct device_attribute *attr
 		data = 0x800001;
 	else
 		return -EINVAL;
-	if (ACPI_SUCCESS(samsung_fan_wmi_call(opcode, &data, sizeof(data))))
-		return count;
-	else
+	if (samsung_fan_wmi_call(opcode, &data, sizeof(data)))
 		return -EIO;
+	else
+		return count;
 }
 
 static DEVICE_ATTR(mode, S_IRUGO | S_IWUSR, samsung_fan_mode_show, samsung_fan_mode_store);
