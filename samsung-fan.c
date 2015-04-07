@@ -75,9 +75,9 @@ ssize_t samsung_fan_mode_show(struct device *dev, struct device_attribute *attr,
 	if (ACPI_FAILURE(samsung_fan_wmi_call(opcode, &data, sizeof(data))))
 		return -EIO;
 	if (data)
-		strcpy(buf, "auto on [off]\n");
+		strcpy(buf, "[auto off] on\n");
 	else
-		strcpy(buf, "auto [on] off\n");
+		strcpy(buf, "auto off [on]\n");
 	return strlen(buf);
 }
 
