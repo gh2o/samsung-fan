@@ -9,9 +9,9 @@
 struct samsung_fan_packet {
 	uint16_t magic;
 	uint16_t opcode;
-	uint32_t value;
-	uint8_t padding[24];
-};
+	uint8_t reqres;
+	uint8_t data[16];
+} __packed;
 
 static inline bool string_matches(const char *str, const char *kwd) {
 	size_t len = strlen(kwd);
@@ -36,14 +36,17 @@ ssize_t samsung_fan_mode_store(struct device *dev, struct device_attribute *attr
 	struct acpi_buffer abuf = { sizeof(pkt), &pkt };
 	struct acpi_buffer obuf = { ACPI_ALLOCATE_BUFFER, NULL };
 	acpi_status st;
-	if (string_matches(buf, "auto"))
-		pkt.value = 0x81000100u;
-	else if (string_matches(buf, "on"))
-		pkt.value = 0;
-	else if (string_matches(buf, "off"))
-		pkt.value = 0x80000100u;
-	else
+	if (string_matches(buf, "auto")) {
+		pkt.data[0] = 0x01;
+		pkt.data[2] = 0x81;
+	} else if (string_matches(buf, "on")) {
+		// no need to do anything
+	} else if (string_matches(buf, "off")) {
+		pkt.data[0] = 0x01;
+		pkt.data[2] = 0x80;
+	} else {
 		return -EINVAL;
+	}
 	st = wmi_evaluate_method(WMI_GUID, 1, 0, &abuf, &obuf);
 	kfree(obuf.pointer);
 	if (ACPI_SUCCESS(st)) {
