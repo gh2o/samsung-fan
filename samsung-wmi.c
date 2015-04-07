@@ -187,6 +187,7 @@ err0:
 }
 
 static void samsung_wmi_exit(void) {
+	led_classdev_unregister(&samsung_wmi_kbd_backlight_led);
 	device_remove_file(&samsung_wmi_device->dev, &dev_attr_fan_mode);
 	platform_device_unregister(samsung_wmi_device);
 	platform_driver_unregister(&samsung_wmi_driver);
