@@ -68,11 +68,29 @@ err0:
 	return ret;
 }
 
+static int samsung_fan_wmi_call_with_unlock(
+		uint16_t unlock_opcode,
+		uint16_t opcode, void *data, size_t len) {
+	unsigned int unlock_data = 0xAABB;
+	int ret;
+	/********/
+	ret = samsung_fan_wmi_call(unlock_opcode, &unlock_data, sizeof(unlock_data));
+	if (ret)
+		goto err0;
+	if (unlock_data != 0xCCDD) {
+		dev_err(&samsung_fan_device->dev, "Samsung WMI incorrect unlock response!\n");
+		ret = -EIO;
+		goto err0;
+	}
+	ret = samsung_fan_wmi_call(opcode, data, len);
+err0:
+	return ret;
+}
+
 ssize_t samsung_fan_mode_show(struct device *dev, struct device_attribute *attr,
 		char *buf) {
-	uint16_t opcode = 0x31;
 	uint32_t data = 0;
-	if (samsung_fan_wmi_call(opcode, &data, sizeof(data)))
+	if (samsung_fan_wmi_call_with_unlock(0x31, 0x31, &data, sizeof(data)))
 		return -EIO;
 	if (data)
 		strcpy(buf, "[auto off] on\n");
@@ -83,7 +101,6 @@ ssize_t samsung_fan_mode_show(struct device *dev, struct device_attribute *attr,
 
 ssize_t samsung_fan_mode_store(struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t count) {
-	uint16_t opcode = 0x32;
 	uint32_t data;
 	if (string_matches(buf, "auto"))
 		data = 0x810001;
@@ -93,7 +110,7 @@ ssize_t samsung_fan_mode_store(struct device *dev, struct device_attribute *attr
 		data = 0x800001;
 	else
 		return -EINVAL;
-	if (samsung_fan_wmi_call(opcode, &data, sizeof(data)))
+	if (samsung_fan_wmi_call_with_unlock(0x31, 0x32, &data, sizeof(data)))
 		return -EIO;
 	else
 		return count;
