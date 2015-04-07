@@ -1,6 +1,7 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/acpi.h>
+#include <linux/leds.h>
 #include <linux/platform_device.h>
 
 #define DRIVER_NAME "samsung-wmi"
@@ -14,13 +15,6 @@ struct samsung_wmi_packet {
 } __packed;
 
 static struct platform_device *samsung_wmi_device;
-
-static struct platform_driver samsung_wmi_driver = {
-	.driver = {
-		.name = DRIVER_NAME,
-		.owner = THIS_MODULE,
-	},
-};
 
 static inline bool string_matches(const char *str, const char *kwd) {
 	size_t len = strlen(kwd);
@@ -116,7 +110,30 @@ ssize_t samsung_wmi_fan_mode_store(struct device *dev, struct device_attribute *
 		return count;
 }
 
+static void samsung_wmi_kbd_backlight_led_brightness_set(
+		struct led_classdev *cdev, enum led_brightness brightness) {
+	unsigned int data = brightness;
+	if (data > 4)
+		data = 4;
+	data = (data << 8) | 0x82;
+	/********/
+	samsung_wmi_method_call_with_unlock(0x78, 0x78, &data, sizeof(data));
+}
+
 static DEVICE_ATTR(fan_mode, S_IRUGO | S_IWUSR, samsung_wmi_fan_mode_show, samsung_wmi_fan_mode_store);
+
+static struct platform_driver samsung_wmi_driver = {
+	.driver = {
+		.name = DRIVER_NAME,
+		.owner = THIS_MODULE,
+	},
+};
+
+static struct led_classdev samsung_wmi_kbd_backlight_led = {
+	.name = DRIVER_NAME "::kbd_backlight",
+	.max_brightness = 4,
+	.brightness_set = samsung_wmi_kbd_backlight_led_brightness_set,
+};
 
 static int samsung_wmi_init(void) {
 	int ret;
@@ -141,8 +158,15 @@ static int samsung_wmi_init(void) {
 	if (ret) {
 		goto err3;
 	}
+	ret = led_classdev_register(&samsung_wmi_device->dev,
+			&samsung_wmi_kbd_backlight_led);
+	if (ret) {
+		goto err4;
+	}
 	return 0;
-//err4:
+//err5:
+	led_classdev_unregister(&samsung_wmi_kbd_backlight_led);
+err4:
 	device_remove_file(&samsung_wmi_device->dev, &dev_attr_fan_mode);
 err3:
 	platform_device_del(samsung_wmi_device);
