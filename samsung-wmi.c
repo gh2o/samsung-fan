@@ -81,7 +81,7 @@ err0:
 	return ret;
 }
 
-ssize_t samsung_wmi_fan_mode_show(struct device *dev, struct device_attribute *attr,
+static ssize_t samsung_wmi_fan_mode_show(struct device *dev, struct device_attribute *attr,
 		char *buf) {
 	uint32_t data = 0;
 	if (samsung_wmi_method_call_with_unlock(0x31, 0x31, &data, sizeof(data)))
@@ -93,7 +93,7 @@ ssize_t samsung_wmi_fan_mode_show(struct device *dev, struct device_attribute *a
 	return strlen(buf);
 }
 
-ssize_t samsung_wmi_fan_mode_store(struct device *dev, struct device_attribute *attr,
+static ssize_t samsung_wmi_fan_mode_store(struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t count) {
 	uint32_t data;
 	if (string_matches(buf, "auto"))
