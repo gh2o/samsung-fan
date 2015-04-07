@@ -135,6 +135,11 @@ static struct led_classdev samsung_wmi_kbd_backlight_led = {
 	.brightness_set = samsung_wmi_kbd_backlight_led_brightness_set,
 };
 
+static int kb_default_brightness = -1;
+module_param(kb_default_brightness, int, S_IRUGO);
+MODULE_PARM_DESC(kb_default_brightness,
+		"Default keyboard backlight brightness right after initialization");
+
 static int samsung_wmi_init(void) {
 	int ret;
 	// check whether method is present
@@ -162,6 +167,9 @@ static int samsung_wmi_init(void) {
 			&samsung_wmi_kbd_backlight_led);
 	if (ret) {
 		goto err4;
+	}
+	if (kb_default_brightness >= 0) {
+		led_set_brightness(&samsung_wmi_kbd_backlight_led, kb_default_brightness);
 	}
 	return 0;
 //err5:
