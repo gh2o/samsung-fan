@@ -70,9 +70,15 @@ err0:
 
 ssize_t samsung_fan_mode_show(struct device *dev, struct device_attribute *attr,
 		char *buf) {
-	const char *info = "auto on off\n";
-	strcpy(buf, info);
-	return strlen(info);
+	uint16_t opcode = 0x31;
+	uint32_t data = 0;
+	if (ACPI_FAILURE(samsung_fan_wmi_call(opcode, &data, sizeof(data))))
+		return -EIO;
+	if (data)
+		strcpy(buf, "auto on [off]\n");
+	else
+		strcpy(buf, "auto [on] off\n");
+	return strlen(buf);
 }
 
 ssize_t samsung_fan_mode_store(struct device *dev, struct device_attribute *attr,
