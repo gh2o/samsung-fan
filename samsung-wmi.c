@@ -42,7 +42,7 @@ static int samsung_wmi_method_call(uint16_t opcode, void *data, size_t len) {
 	memcpy(inpkt.data, data, len);
 	st = wmi_evaluate_method(WMI_GUID, 1, 0, &inbuf, &outbuf);
 	if (ACPI_FAILURE(st)) {
-		dev_err(&samsung_wmi_device->dev, "Samsung WMI opcode 0x%x failed: %s\n",
+		dev_err(&samsung_wmi_device->dev, "opcode 0x%x failed: %s\n",
 				opcode, acpi_format_exception(st));
 		goto err0;
 	}
@@ -72,7 +72,7 @@ static int samsung_wmi_method_call_with_unlock(
 	if (ret)
 		goto err0;
 	if (unlock_data != 0xCCDD) {
-		dev_err(&samsung_wmi_device->dev, "Samsung WMI incorrect unlock response!\n");
+		dev_err(&samsung_wmi_device->dev, "incorrect unlock response!\n");
 		ret = -EIO;
 		goto err0;
 	}
